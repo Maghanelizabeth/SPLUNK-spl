@@ -1,0 +1,13 @@
+Detects APT41 dual-use behavior, including mixed credential abuse, cloud-style access patterns, and cross-environment movement.
+
+
+index=auth OR index=endpoint OR index=cloud OR index=proxy
+(
+    EventCode=4624 OR EventCode=4625
+    OR Image="*powershell*"
+    OR Image="*wmic*"
+)
+| stats count dc(host) as hosts dc(src_ip) as ips values(Image) as tools by user
+| eval hybrid=if(hosts>4 AND ips>2 AND count>10,1,0)
+| where hybrid=1
+| sort - hosts
