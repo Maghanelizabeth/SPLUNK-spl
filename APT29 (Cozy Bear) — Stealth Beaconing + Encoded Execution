@@ -1,0 +1,15 @@
+Detects APT29-style low-noise intrusion behavior, including encoded PowerShell, stealth execution chains, and slow periodic communication.
+
+index=endpoint OR index=proxy OR index=sysmon
+(
+    CommandLine="*EncodedCommand*"
+    OR CommandLine="*Invoke-Expression*"
+    OR CommandLine="*IEX*"
+    OR CommandLine="*http*"
+)
+| bin _time span=10m
+| stats count by src_ip _time host user CommandLine
+| eventstats avg(count) as avg stdev(count) as stdev by src_ip
+| eval anomaly=if(count > avg + (stdev*2), 1, 0)
+| where anomaly=1
+| sort - count
