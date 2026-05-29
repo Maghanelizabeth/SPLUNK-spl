@@ -1,0 +1,8 @@
+Detects periodic outbound traffic patterns that may indicate malware beaconing to a command-and-control server.
+
+index=network OR index=proxy
+| bin _time span=5m
+| stats count by src_ip _time
+| eventstats avg(count) as avg stdev(count) as stdev by src_ip
+| eval is_beaconing=if(count > (avg + (stdev*3)), "YES", "NO")
+| search is_beaconing="YES"
