@@ -1,0 +1,44 @@
+This query hunts for behavioral patterns associated with Volt Typhoon-style intrusions, including:
+
+Living-off-the-land binaries (LOLBins)
+Suspicious remote execution patterns
+Credential access behavior
+Long-dwell lateral movement
+Administrative tool abuse (WMI, PsExec, WinRM)
+Low-noise persistence mechanisms
+
+Volt Typhoon activity is typically:
+
+Fileless or low-malware footprint
+Legitimate tool abuse
+Stealthy lateral movement inside enterprise networks
+Minimal outbound C2 usage (often proxy-based or direct connections)
+
+
+index=endpoint OR index=security OR index=sysmon
+(
+    EventCode=4688 OR EventCode=1 OR EventCode=7045 OR EventCode=4624 OR EventCode=4769
+)
+(
+    Image="*cmd.exe"
+    OR Image="*powershell.exe"
+    OR Image="*wmic.exe"
+    OR Image="*psexec*"
+    OR Image="*svchost.exe"
+    OR Image="*rundll32.exe"
+    OR Image="*regsvr32.exe"
+    OR Image="*schtasks.exe"
+    OR Image="*winrm*"
+)
+| eval suspicious_activity=case(
+    like(CommandLine,"%Invoke-Expression%"), "PowerShell Injection",
+    like(CommandLine,"%EncodedCommand%"), "Encoded PowerShell",
+    like(Image,"%wmic%"), "WMI Remote Execution",
+    like(Image,"%psexec%"), "PsExec Lateral Movement",
+    like(Image,"%schtasks%"), "Scheduled Task Persistence",
+    like(Image,"%rundll32%"), "Proxy Execution",
+    like(Image,"%regsvr32%"), "Script Execution"
+)
+| stats count values(CommandLine) as commands values(ParentImage) as parents by host user src_ip suspicious_activity
+| where count > 3
+| sort - count
