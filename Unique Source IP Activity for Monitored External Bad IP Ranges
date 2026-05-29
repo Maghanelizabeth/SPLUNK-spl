@@ -1,0 +1,39 @@
+Tracks the hourly count of unique source IP addresses communicating with specified external IP ranges and hosts, helping identify spikes in network activity, scanning, or potential threat actor infrastructure interactions.
+
+Detailed Description
+
+This Splunk search analyzes network traffic in the chick index by:
+
+Monitoring communications involving:
+185.186.244.0/24
+172.94.9.0/24
+185.93.89.37
+185.93.89.138
+Matching traffic where either:
+The source IP falls within the monitored infrastructure, or
+The destination IP falls within the monitored infrastructure.
+Calculating the number of distinct source IP addresses (dc(src)).
+Aggregating results into 1-hour intervals using timechart.
+Producing a trend line showing unique source IP activity over time.
+Security Use Cases
+Threat hunting for known malicious infrastructure
+Monitoring communications with suspicious IP ranges
+Detecting scanning or reconnaissance activity
+Measuring exposure to threat actor infrastructure
+Identifying sudden increases in external connections
+Investigating command-and-control (C2) communications
+Tracking campaign activity over time
+
+
+index=*addindex*
+(
+    (src>= "185.186.244.0" AND src<= "185.186.244.255")
+    OR (dst>= "185.186.244.0" AND dst<= "185.186.244.255")
+    OR (src>= "172.94.9.0" AND src<= "172.94.9.255")
+    OR (dst>= "172.94.9.0" AND dst<= "172.94.9.255")
+    OR src="185.93.89.37" 
+    OR dst="185.93.89.37"
+    OR src="185.93.89.138" 
+    OR dst="185.93.89.138"
+    )
+| timechart span=1h dc(src) AS unique_source_ips
