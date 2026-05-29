@@ -1,0 +1,13 @@
+Detects Lazarus-style fileless execution, heavy PowerShell usage, and script-based payload delivery.
+
+
+index=endpoint OR index=sysmon
+(
+    Image="*powershell.exe"
+    OR CommandLine="*IEX*"
+    OR CommandLine="*DownloadString*"
+    OR CommandLine="*Net.WebClient*"
+)
+| stats count values(CommandLine) as cmd by host user src_ip
+| where count > 3
+| sort - count
