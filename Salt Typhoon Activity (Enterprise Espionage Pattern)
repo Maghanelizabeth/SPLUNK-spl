@@ -1,0 +1,40 @@
+This query targets behavioral indicators associated with Salt Typhoon-style intrusions, which typically emphasize:
+
+VPN / edge device compromise (initial access pivot)
+Credential harvesting and reuse
+Internal reconnaissance at low volume
+Stealthy lateral movement using legitimate tools
+Long dwell time with minimal noisy malware
+Authentication anomalies across time and geography
+
+This hunt focuses on identity + lateral movement + edge access behavior, rather than malware signatures.
+
+
+
+index=auth OR index=security OR index=vpn OR index=proxy
+(
+    EventCode=4624 OR EventCode=4625 OR EventCode=4768 OR EventCode=4769 OR EventCode=4776
+)
+| eval is_success=if(EventCode=4624,1,0)
+| eval is_fail=if(EventCode=4625,1,0)
+
+| eval is_vpn=if(match(Logon_Process,"vpn|radius|citrix|fortinet|checkpoint"),1,0)
+
+| eval is_suspicious_logon=case(
+    is_vpn=1 AND is_success=1, "VPN Successful Login",
+    is_fail=1, "Failed Authentication Activity",
+    Logon_Type=3, "Network Logon",
+    Logon_Type=10, "RDP Login"
+)
+
+| stats 
+    count as total_events
+    sum(is_success) as successes
+    sum(is_fail) as failures
+    dc(src_ip) as unique_ips
+    dc(host) as unique_hosts
+    values(is_suspicious_logon) as behaviors
+    by user src_ip dest host
+
+| where failures > 10 OR unique_hosts > 3 OR unique_ips > 5
+| sort - failures
