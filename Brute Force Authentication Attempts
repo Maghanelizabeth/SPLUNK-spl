@@ -1,0 +1,8 @@
+Detects repeated failed login attempts that may indicate brute-force attacks or password spraying activity.
+*modify indexes for your environement
+
+index=security OR index=auth
+(action=failure OR eventtype=failed_login)
+| stats count by user src_ip dest
+| where count > 10
+| sort - count
